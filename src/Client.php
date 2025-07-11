@@ -4655,8 +4655,8 @@ class Client
             CURLOPT_CONNECTTIMEOUT => $this->curl_connect_timeout,
             CURLOPT_TIMEOUT        => $this->curl_request_timeout,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING       => '',
-            CURLOPT_HEADERFUNCTION => [$this, 'response_header_callback'],
+            CURLOPT_ENCODING       => ''
+            // CURLOPT_HEADERFUNCTION => [$this, 'response_header_callback'],
         ];
 
         if ($this->debug) {
