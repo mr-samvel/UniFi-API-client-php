@@ -1,7 +1,7 @@
 {
-    "name": "art-of-wifi/unifi-api-client",
+    "name": "mr-samvel/unifi-api-client",
     "type": "library",
-    "description": "API client class for use with Ubiquiti's UniFi controller",
+    "description": "API client class for use with Ubiquiti's UniFi controller, forked and editted from ArtOfWifi.",
     "keywords": [
         "ubnt",
         "ubiquiti",
@@ -11,13 +11,17 @@
         "client",
         "unifi os"
     ],
-    "homepage": "https://github.com/Art-of-WiFi/UniFi-API-client",
+    "homepage": "https://github.com/mr-samvel/UniFi-API-client-php",
     "license": "MIT",
     "authors": [
         {
             "name": "Art of WiFi",
             "email": "info@artofowifi.net",
             "homepage": "https://artofwifi.net"
+        },
+        {
+            "name": "mr-samvel",
+            "email": "samuransolin@gmail.com"
         }
     ],
     "require": {
