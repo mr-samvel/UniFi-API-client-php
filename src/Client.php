@@ -45,16 +45,11 @@ class Client
      *       getter and setter functions/methods
      */
     protected string $baseurl                    = '';
-    protected string $user                       = '';
-    protected string $password                   = '';
+    protected string $token                      = '';
     protected string $site                       = '';
-    protected string $version                    = '';
     protected bool   $debug                      = false;
-    protected bool   $is_logged_in               = false;
     protected bool   $is_unifi_os                = false;
     protected int    $exec_retries               = 0;
-    protected string $cookies                    = '';
-    protected int    $cookies_created_at         = 0;
     protected        $last_results_raw           = null;
     protected string $last_error_message         = '';
     protected bool   $curl_ssl_verify_peer       = false;
@@ -63,7 +58,6 @@ class Client
     protected string $curl_method                = self::DEFAULT_CURL_METHOD;
     protected int    $curl_request_timeout       = 30;
     protected int    $curl_connect_timeout       = 10;
-    protected string $unificookie_name           = 'unificookie';
     protected array  $curl_headers               = [
         'Accept: application/json',
         'Content-Type: application/json',
@@ -98,13 +92,10 @@ class Client
      * @throws CurlExtensionNotLoadedException|InvalidBaseUrlException|InvalidSiteNameException
      */
     public function __construct(
-        string  $user,
-        string  $password,
+        string  $token,
         string  $baseurl = 'https://127.0.0.1:8443',
         ?string $site = 'default',
-        ?string $version = '8.0.28',
-        bool    $ssl_verify = false,
-        string  $unificookie_name = 'unificookie'
+        bool    $ssl_verify = false
     )
     {
         if (!extension_loaded('curl')) {
@@ -116,10 +107,9 @@ class Client
 
         $this->baseurl          = trim($baseurl);
         $this->site             = strtolower(trim($site));
-        $this->user             = trim($user);
-        $this->password         = trim($password);
-        $this->version          = trim($version);
-        $this->unificookie_name = trim($unificookie_name);
+        $this->token            = trim($token);
+
+        $this->curl_headers[] = 'X-API-KEY: '.$this->token;
 
         if ($ssl_verify === true) {
             $this->curl_ssl_verify_peer = true;
@@ -136,15 +126,15 @@ class Client
      */
     public function __destruct()
     {
-        /** If $_SESSION[$this->unificookie_name] is set, do not log out here. */
-        if (isset($_SESSION[$this->unificookie_name])) {
-            return;
-        }
+        // /** If $_SESSION[$this->unificookie_name] is set, do not log out here. */
+        // if (isset($_SESSION[$this->unificookie_name])) {
+        //     return;
+        // }
 
-        /** Log out, if needed. */
-        if ($this->is_logged_in) {
-            $this->logout();
-        }
+        // /** Log out, if needed. */
+        // if ($this->is_logged_in) {
+        //     $this->logout();
+        // }
     }
 
     /**
@@ -157,13 +147,13 @@ class Client
     public function login(): bool
     {
         /** Skip the login process if already logged in. */
-        if ($this->update_unificookie()) {
-            $this->is_logged_in = true;
-        }
+        // if ($this->update_unificookie()) {
+        //     $this->is_logged_in = true;
+        // }
 
-        if ($this->is_logged_in === true) {
-            return true;
-        }
+        // if ($this->is_logged_in === true) {
+        //     return true;
+        // }
 
         /** Prepare cURL and options to check whether this is a "regular" controller or one based on UniFi OS. */
         $ch = $this->get_curl_handle();
@@ -190,17 +180,17 @@ class Client
 
         /** Prepare the actual login. */
         $curl_options = [
-            CURLOPT_POST       => true,
-            CURLOPT_POSTFIELDS => json_encode(['username' => $this->user, 'password' => $this->password]),
+            // CURLOPT_POST       => true,
+            // CURLOPT_POSTFIELDS => json_encode(['username' => $this->user, 'password' => $this->password]),
             CURLOPT_HTTPHEADER => $this->curl_headers,
-            CURLOPT_REFERER    => $this->baseurl . '/login',
-            CURLOPT_URL        => $this->baseurl . '/api/login',
+            // CURLOPT_REFERER    => $this->baseurl . '/login',
+            // CURLOPT_URL        => $this->baseurl . '/api/login',
         ];
 
         /** Specific to UniFi OS-based controllers. */
         if ($http_code === 200) {
             $this->is_unifi_os         = true;
-            $curl_options[CURLOPT_URL] = $this->baseurl . '/api/auth/login';
+            $curl_options[CURLOPT_URL] = $this->baseurl . '/proxy/network/integration/v1/sites';
         }
 
         curl_setopt_array($ch, $curl_options);
@@ -232,7 +222,8 @@ class Client
         /** If the HTTP response code is 200, we are logged in. */
         if ($http_code === 200) {
             curl_close($ch);
-            return $this->is_logged_in = true;
+            return true;
+            // return $this->is_logged_in = true;
         }
 
         throw new LoginFailedException('HTTP response: ' . $http_code);
@@ -244,51 +235,47 @@ class Client
      * @return bool true upon success
      * @throws CurlGeneralErrorException|CurlTimeoutException|CurlTimeoutException
      */
-    public function logout(): bool
-    {
-        /** Prepare cURL and options. */
-        $ch = $this->get_curl_handle();
+    // public function logout(): bool
+    // {
+    //     /** Prepare cURL and options. */
+    //     $ch = $this->get_curl_handle();
 
-        $curl_options = [
-            CURLOPT_HEADER => true,
-            CURLOPT_POST   => true,
-        ];
+    //     $curl_options = [
+    //         CURLOPT_HEADER => true,
+    //         CURLOPT_POST   => true,
+    //     ];
 
-        $logout_path = '/logout';
+    //     $logout_path = '/logout';
 
-        if ($this->is_unifi_os) {
-            $logout_path                         = '/api/auth/logout';
-            $curl_options[CURLOPT_CUSTOMREQUEST] = 'POST';
+    //     if ($this->is_unifi_os) {
+    //         $logout_path                         = '/api/auth/logout';
+    //         $curl_options[CURLOPT_CUSTOMREQUEST] = 'POST';
 
-            $this->create_x_csrf_token_header();
-        }
+    //         $this->create_x_csrf_token_header();
+    //     }
 
-        $curl_options[CURLOPT_HTTPHEADER] = $this->curl_headers;
-        $curl_options[CURLOPT_URL]        = $this->baseurl . $logout_path;
+    //     $curl_options[CURLOPT_HTTPHEADER] = $this->curl_headers;
+    //     $curl_options[CURLOPT_URL]        = $this->baseurl . $logout_path;
 
-        curl_setopt_array($ch, $curl_options);
+    //     curl_setopt_array($ch, $curl_options);
 
-        /** Execute the cURL request to logout. */
-        curl_exec($ch);
+    //     /** Execute the cURL request to logout. */
+    //     curl_exec($ch);
 
-        $error_number = curl_errno($ch);
+    //     $error_number = curl_errno($ch);
 
-        if ($error_number) {
-            if (in_array($error_number, [CURLE_OPERATION_TIMEDOUT, CURLE_OPERATION_TIMEOUTED])) {
-                throw new CurlTimeoutException(curl_error($ch), curl_getinfo($ch, CURLINFO_RESPONSE_CODE), curl_getinfo($ch));
-            }
+    //     if ($error_number) {
+    //         if (in_array($error_number, [CURLE_OPERATION_TIMEDOUT, CURLE_OPERATION_TIMEOUTED])) {
+    //             throw new CurlTimeoutException(curl_error($ch), curl_getinfo($ch, CURLINFO_RESPONSE_CODE), curl_getinfo($ch));
+    //         }
 
-            throw new CurlGeneralErrorException(curl_error($ch), curl_getinfo($ch, CURLINFO_RESPONSE_CODE), curl_getinfo($ch));
-        }
+    //         throw new CurlGeneralErrorException(curl_error($ch), curl_getinfo($ch, CURLINFO_RESPONSE_CODE), curl_getinfo($ch));
+    //     }
 
-        curl_close($ch);
+    //     curl_close($ch);
 
-        $this->is_logged_in       = false;
-        $this->cookies            = '';
-        $this->cookies_created_at = 0;
-
-        return true;
-    }
+    //     return true;
+    // }
 
     /****************************************************************
      * Functions to access UniFi controller API routes from here:
@@ -3984,46 +3971,46 @@ class Client
      *       - To force the Class instance to log out automatically upon destruct, call logout() or unset.
      * @return string the UniFi controller cookie
      */
-    public function get_cookie(): string
-    {
-        return $this->cookies;
-    }
+    // public function get_cookie(): string
+    // {
+    //     return $this->cookies;
+    // }
 
-    public function get_cookies(): string
-    {
-        return $this->cookies;
-    }
+    // public function get_cookies(): string
+    // {
+    //     return $this->cookies;
+    // }
 
     /**
      * Get the Unix timestamp of the latest cookie creation.
      *
      * @return int
      */
-    public function get_cookies_created_at(): int
-    {
-        return $this->cookies_created_at;
-    }
+    // public function get_cookies_created_at(): int
+    // {
+    //     return $this->cookies_created_at;
+    // }
 
     /**
      * Set the value for the private property $cookies and update $cookies_created_at timestamp.
      *
      * @param string $cookies_value new value for $cookies
      */
-    public function set_cookies(string $cookies_value)
-    {
-        $this->cookies            = $cookies_value;
-        $this->cookies_created_at = time();
-    }
+    // public function set_cookies(string $cookies_value)
+    // {
+    //     $this->cookies            = $cookies_value;
+    //     $this->cookies_created_at = time();
+    // }
 
     /**
      * Get the current value of the private property $unificookie_name.
      *
      * @return string current value of $unificookie_name
      */
-    public function get_unificookie_name(): string
-    {
-        return $this->unificookie_name;
-    }
+    // public function get_unificookie_name(): string
+    // {
+    //     return $this->unificookie_name;
+    // }
 
     /**
      * Get current request method.
@@ -4234,9 +4221,9 @@ class Client
     )
     {
         /** Guard clause to check if logged in when needed. */
-        if ($login_required && !$this->is_logged_in) {
-            throw new LoginRequiredException();
-        }
+        // if ($login_required && !$this->is_logged_in) {
+        //     throw new LoginRequiredException();
+        // }
 
         $this->last_results_raw = $this->exec_curl($path, $payload, $prefix_path);
 
@@ -4422,53 +4409,53 @@ class Client
      *
      * @return bool returns true when unificookie was updated, else returns false
      */
-    protected function update_unificookie(): bool
-    {
-        if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION[$this->unificookie_name]) && !empty($_SESSION[$this->unificookie_name])) {
-            $this->cookies            = $_SESSION[$this->unificookie_name];
-            $this->cookies_created_at = time();
+    // protected function update_unificookie(): bool
+    // {
+    //     if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION[$this->unificookie_name]) && !empty($_SESSION[$this->unificookie_name])) {
+    //         $this->cookies            = $_SESSION[$this->unificookie_name];
+    //         $this->cookies_created_at = time();
 
-            /** if the cookie contains a JWT, this is a UniFi OS controller */
-            if (strpos($this->cookies, 'TOKEN') !== false) {
-                $this->is_unifi_os = true;
-            }
+    //         /** if the cookie contains a JWT, this is a UniFi OS controller */
+    //         if (strpos($this->cookies, 'TOKEN') !== false) {
+    //             $this->is_unifi_os = true;
+    //         }
 
-            return true;
-        }
+    //         return true;
+    //     }
 
-        return false;
-    }
+    //     return false;
+    // }
 
     /**
      * Add a cURL header containing the CSRF token from the TOKEN in our Cookie string.
      *
      * @return void
      */
-    protected function create_x_csrf_token_header()
-    {
-        if (!empty($this->cookies) && strpos($this->cookies, 'TOKEN') !== false) {
-            $cookie_bits = explode('=', $this->cookies);
+    // protected function create_x_csrf_token_header()
+    // {
+    //     if (!empty($this->cookies) && strpos($this->cookies, 'TOKEN') !== false) {
+    //         $cookie_bits = explode('=', $this->cookies);
 
-            if (!array_key_exists(1, $cookie_bits)) {
-                return;
-            }
+    //         if (!array_key_exists(1, $cookie_bits)) {
+    //             return;
+    //         }
 
-            $jwt_components = explode('.', $cookie_bits[1]);
+    //         $jwt_components = explode('.', $cookie_bits[1]);
 
-            if (!array_key_exists(1, $jwt_components)) {
-                return;
-            }
+    //         if (!array_key_exists(1, $jwt_components)) {
+    //             return;
+    //         }
 
-            /** remove any existing x-csrf-token headers first */
-            foreach ($this->curl_headers as $index => $header) {
-                if (strpos(strtolower($header), strtolower('x-csrf-token:')) !== false) {
-                    unset($this->curl_headers[$index]);
-                }
-            }
+    //         /** remove any existing x-csrf-token headers first */
+    //         foreach ($this->curl_headers as $index => $header) {
+    //             if (strpos(strtolower($header), strtolower('x-csrf-token:')) !== false) {
+    //                 unset($this->curl_headers[$index]);
+    //             }
+    //         }
 
-            $this->curl_headers[] = 'x-csrf-token: ' . json_decode(base64_decode($jwt_components[1]))->csrfToken;
-        }
-    }
+    //         $this->curl_headers[] = 'x-csrf-token: ' . json_decode(base64_decode($jwt_components[1]))->csrfToken;
+    //     }
+    // }
 
     /**
      * Callback function for cURL to extract and store cookies as needed.
@@ -4477,35 +4464,35 @@ class Client
      * @param string $header_line the response header line number
      * @return int length of the header line
      */
-    protected function response_header_callback($ch, string $header_line): int
-    {
-        if (strpos($header_line, 'unifises') !== false || strpos($header_line, 'TOKEN') !== false) {
-            $cookie = trim(str_replace(['set-cookie: ', 'Set-Cookie: '], '', $header_line));
+    // protected function response_header_callback($ch, string $header_line): int
+    // {
+    //     if (strpos($header_line, 'unifises') !== false || strpos($header_line, 'TOKEN') !== false) {
+    //         $cookie = trim(str_replace(['set-cookie: ', 'Set-Cookie: '], '', $header_line));
 
-            if (!empty($cookie)) {
-                $cookie_crumbs = explode(';', $cookie);
-                foreach ($cookie_crumbs as $cookie_crumb) {
-                    if (strpos($cookie_crumb, 'unifises') !== false) {
-                        $this->cookies            = $cookie_crumb;
-                        $this->cookies_created_at = time();
-                        $this->is_logged_in       = true;
-                        $this->is_unifi_os        = false;
-                        break;
-                    }
+    //         if (!empty($cookie)) {
+    //             $cookie_crumbs = explode(';', $cookie);
+    //             foreach ($cookie_crumbs as $cookie_crumb) {
+    //                 if (strpos($cookie_crumb, 'unifises') !== false) {
+    //                     $this->cookies            = $cookie_crumb;
+    //                     $this->cookies_created_at = time();
+    //                     $this->is_logged_in       = true;
+    //                     $this->is_unifi_os        = false;
+    //                     break;
+    //                 }
 
-                    if (strpos($cookie_crumb, 'TOKEN') !== false) {
-                        $this->cookies            = $cookie_crumb;
-                        $this->cookies_created_at = time();
-                        $this->is_logged_in       = true;
-                        $this->is_unifi_os        = true;
-                        break;
-                    }
-                }
-            }
-        }
+    //                 if (strpos($cookie_crumb, 'TOKEN') !== false) {
+    //                     $this->cookies            = $cookie_crumb;
+    //                     $this->cookies_created_at = time();
+    //                     $this->is_logged_in       = true;
+    //                     $this->is_unifi_os        = true;
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //     }
 
-        return strlen($header_line);
-    }
+    //     return strlen($header_line);
+    // }
 
     /**
      * Execute the cURL request.
@@ -4563,9 +4550,9 @@ class Client
                 break;
         }
 
-        if ($this->is_unifi_os && $this->curl_method !== 'GET') {
-            $this->create_x_csrf_token_header();
-        }
+        // if ($this->is_unifi_os && $this->curl_method !== 'GET') {
+        //     $this->create_x_csrf_token_header();
+        // }
 
         $curl_options[CURLOPT_HTTPHEADER] = $this->curl_headers;
 
@@ -4600,13 +4587,13 @@ class Client
                  * Explicitly clear the expired Cookie/Token, update other properties and log out before logging in
                  * again.
                  */
-                if (isset($_SESSION[$this->unificookie_name])) {
-                    $_SESSION[$this->unificookie_name] = '';
-                }
+                // if (isset($_SESSION[$this->unificookie_name])) {
+                //     $_SESSION[$this->unificookie_name] = '';
+                // }
 
-                $this->is_logged_in       = false;
-                $this->cookies            = '';
-                $this->cookies_created_at = 0;
+                // $this->is_logged_in       = false;
+                // $this->cookies            = '';
+                // $this->cookies_created_at = 0;
                 $this->exec_retries++;
 
                 curl_close($ch);
@@ -4676,10 +4663,10 @@ class Client
             $curl_options[CURLOPT_VERBOSE] = true;
         }
 
-        if (!empty($this->cookies)) {
-            $curl_options[CURLOPT_COOKIESESSION] = true;
-            $curl_options[CURLOPT_COOKIE]        = $this->cookies;
-        }
+        // if (!empty($this->cookies)) {
+        //     $curl_options[CURLOPT_COOKIESESSION] = true;
+        //     $curl_options[CURLOPT_COOKIE]        = $this->cookies;
+        // }
 
         curl_setopt_array($ch, $curl_options);
 
