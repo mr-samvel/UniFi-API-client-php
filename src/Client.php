@@ -115,6 +115,8 @@ class Client
             $this->curl_ssl_verify_peer = true;
             $this->curl_ssl_verify_host = 2;
         }
+
+        $this->login();
     }
 
     /**
@@ -179,52 +181,53 @@ class Client
         }
 
         /** Prepare the actual login. */
-        $curl_options = [
+        // $curl_options = [
             // CURLOPT_POST       => true,
             // CURLOPT_POSTFIELDS => json_encode(['username' => $this->user, 'password' => $this->password]),
-            CURLOPT_HTTPHEADER => $this->curl_headers,
+            // CURLOPT_HTTPHEADER => $this->curl_headers,
             // CURLOPT_REFERER    => $this->baseurl . '/login',
             // CURLOPT_URL        => $this->baseurl . '/api/login',
-        ];
+        // ];
 
         /** Specific to UniFi OS-based controllers. */
         if ($http_code === 200) {
-            $this->is_unifi_os         = true;
-            $curl_options[CURLOPT_URL] = $this->baseurl . '/proxy/network/integration/v1/sites';
-        }
-
-        curl_setopt_array($ch, $curl_options);
-
-        /** Execute the cURL request and get the HTTP response code. */
-        $response  = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-
-        if ($this->debug) {
-            print PHP_EOL . '<pre>';
-            print PHP_EOL . '-----------LOGIN-------------' . PHP_EOL;
-            print_r(curl_getinfo($ch));
-            print PHP_EOL . '----------RESPONSE-----------' . PHP_EOL;
-            print $response;
-            print PHP_EOL . '-----------------------------' . PHP_EOL;
-            print '</pre>' . PHP_EOL;
-        }
-
-        $error_number = curl_errno($ch);
-
-        if ($error_number) {
-            if (in_array($error_number, [CURLE_OPERATION_TIMEDOUT, CURLE_OPERATION_TIMEOUTED])) {
-                throw new CurlTimeoutException(curl_error($ch), $http_code, curl_getinfo($ch));
-            }
-
-            throw new CurlGeneralErrorException(curl_error($ch), $http_code, curl_getinfo($ch));
-        }
-
-        /** If the HTTP response code is 200, we are logged in. */
-        if ($http_code === 200) {
+            $this->is_unifi_os = true;
             curl_close($ch);
             return true;
-            // return $this->is_logged_in = true;
+            // $curl_options[CURLOPT_URL] = $this->baseurl . '/proxy/network/integration/v1/sites';
         }
+
+        // curl_setopt_array($ch, $curl_options);
+
+        /** Execute the cURL request and get the HTTP response code. */
+        // $response  = curl_exec($ch);
+        // $http_code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+
+        // if ($this->debug) {
+        //     print PHP_EOL . '<pre>';
+        //     print PHP_EOL . '-----------LOGIN-------------' . PHP_EOL;
+        //     print_r(curl_getinfo($ch));
+        //     print PHP_EOL . '----------RESPONSE-----------' . PHP_EOL;
+        //     print $response;
+        //     print PHP_EOL . '-----------------------------' . PHP_EOL;
+        //     print '</pre>' . PHP_EOL;
+        // }
+
+        // $error_number = curl_errno($ch);
+
+        // if ($error_number) {
+        //     if (in_array($error_number, [CURLE_OPERATION_TIMEDOUT, CURLE_OPERATION_TIMEOUTED])) {
+        //         throw new CurlTimeoutException(curl_error($ch), $http_code, curl_getinfo($ch));
+        //     }
+
+        //     throw new CurlGeneralErrorException(curl_error($ch), $http_code, curl_getinfo($ch));
+        // }
+
+        /** If the HTTP response code is 200, we are logged in. */
+        // if ($http_code === 200) {
+        //     curl_close($ch);
+        //     return $this->is_logged_in = true;
+        // }
 
         throw new LoginFailedException('HTTP response: ' . $http_code);
     }
