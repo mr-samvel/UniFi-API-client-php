@@ -47,7 +47,7 @@ class Client
     protected string $token                      = '';
     protected string $site                       = '';
     protected bool   $debug                      = false;
-    protected bool   $is_unifi_os                = false;
+    protected bool   $is_unifi_os                = true;
     protected        $last_results_raw           = null;
     protected string $last_error_message         = '';
     protected bool   $curl_ssl_verify_peer       = false;
@@ -108,7 +108,6 @@ class Client
         $this->token            = trim($token);
 
         $this->curl_headers[] = 'X-API-KEY: '.$this->token;
-        $this->is_unifi_os = true;
 
         if ($ssl_verify === true) {
             $this->curl_ssl_verify_peer = true;
