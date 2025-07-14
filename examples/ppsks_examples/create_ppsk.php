@@ -11,7 +11,7 @@ use UniFi_API\Exceptions\CurlTimeoutException;
 use UniFi_API\Exceptions\InvalidBaseUrlException;
 use UniFi_API\Exceptions\InvalidSiteNameException;
 use UniFi_API\Exceptions\JsonDecodeException;
-use UniFi_API\Exceptions\LoginFailedException;
+use UniFi_API\Exceptions\TokenExpiredException;
 use UniFi_API\Exceptions\LoginRequiredException;
 
 require 'vendor/autoload.php';
@@ -124,7 +124,7 @@ try {
     echo 'CurlGeneralErrorException: ' . $e->getMessage(). PHP_EOL;
 } catch (CurlTimeoutException $e) {
     echo 'CurlTimeoutException: ' . $e->getMessage(). PHP_EOL;
-} catch (LoginFailedException $e) {
+} catch (TokenExpiredException $e) {
     echo 'LoginFailedException: ' . $e->getMessage(). PHP_EOL;
 } catch (Exception $e) {
     echo 'General Exception: ' . $e->getMessage(). PHP_EOL;
