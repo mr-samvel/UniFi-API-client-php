@@ -892,9 +892,9 @@ class Client
      * @return array|bool returns an array of guest device objects with valid access
      * @throws Exception
      */
-    public function list_guests(int $within = 8760)
+    public function list_guests(int $startTimestamp, int $endTimestamp)
     {
-        $payload = ['within' => $within];
+        $payload = ['start' => $startTimestamp, 'end' => $endTimestamp];
 
         return $this->fetch_results('/api/s/' . $this->site . '/stat/guest', $payload);
     }
